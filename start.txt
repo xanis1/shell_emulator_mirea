@@ -1,7 +1,9 @@
+clear
+pwd
 ls
 cd my_files
+pwd
 ls
-cd images
-cd ..
-ls
-cd /
+rev hello world
+conf-dump
+cd invalid_directory
