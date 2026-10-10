@@ -108,6 +108,49 @@ def cmd_conf_dump(config):
         print(f"{key}={value}")
     return True
 
+def cmd_rm(args, state):
+    """Удаление файла или директории из памяти VFS."""
+    if not args:
+        print("Ошибка: rm ожидает аргумент (путь)")
+        return False
+        
+    target = resolve_path(state['cwd'], args[0]).lstrip('/')
+    to_remove = []
+    
+    for f in state['files']:
+        if f == target or f.startswith(target + '/'):
+            to_remove.append(f)
+            
+    if not to_remove:
+        print(f"Ошибка: '{args[0]}' не найдено")
+        return False
+        
+    for f in to_remove:
+        state['files'].remove(f)
+        if f in state['ownership']:
+            del state['ownership'][f]
+            
+    return True
+
+def cmd_chown(args, state):
+    """Изменение владельца файла или директории в памяти."""
+    if len(args) != 2:
+        print("Ошибка: chown ожидает владельца и путь")
+        return False
+        
+    owner, path = args[0], args[1]
+    target = resolve_path(state['cwd'], path).lstrip('/')
+    
+    exists = any(f == target or f.startswith(target + '/') 
+                 for f in state['files'])
+    if not exists:
+        print(f"Ошибка: '{path}' не найдено")
+        return False
+        
+    state['ownership'][target] = owner
+    print(f"Владелец '{path}' изменен на '{owner}'")
+    return True
+
 def execute_command(command, args, config, state):
     """Маршрутизатор команд."""
     if command == "exit":
@@ -124,6 +167,10 @@ def execute_command(command, args, config, state):
         return cmd_rev(args, state), True
     elif command == "conf-dump":
         return cmd_conf_dump(config), True
+    elif command == "rm":
+        return cmd_rm(args, state), True
+    elif command == "chown":
+        return cmd_chown(args, state), True
     
     print(f"Ошибка: неизвестная команда '{command}'")
     return False, True
@@ -140,7 +187,8 @@ def run_script(script_path, config, state, vfs_name):
                     parsed = shlex.split(line)
                     success, _ = execute_command(parsed[0], 
                                                  parsed[1:], 
-                                                 config, state)
+                                                 config, 
+                                                 state)
                     if not success:
                         print(f"Ошибка исполнения скрипта на строке: {line}")
                         break
@@ -162,7 +210,8 @@ def run_repl(config, state, vfs_name):
             parsed = shlex.split(user_input)
             _, keep_running = execute_command(parsed[0], 
                                               parsed[1:], 
-                                              config, state)
+                                              config, 
+                                              state)
             if not keep_running: break
         except ValueError as e:
             print(f"Ошибка синтаксиса: {e}")
@@ -176,14 +225,11 @@ def main():
     print_debug_config(config)
     
     files = load_vfs(config["vfs_path"])
-    state = {"cwd": "/", "files": files}
+    state = {"cwd": "/", "files": files, "ownership": {}}
     vfs_name = "vfs"
     
     if config["script_path"]:
-        run_script(config["script_path"], 
-                   config, 
-                   state, 
-                   vfs_name)
+        run_script(config["script_path"], config, state, vfs_name)
         
     run_repl(config, state, vfs_name)
 
