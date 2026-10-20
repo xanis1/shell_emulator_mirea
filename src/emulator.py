@@ -134,7 +134,8 @@ def cmd_rm(args, state):
 
 def cmd_chown(args, state):
     """Изменение владельца файла или директории в памяти."""
-    if len(args) != 2:
+    const2 = 2
+    if len(args) != const2:
         print("Ошибка: chown ожидает владельца и путь")
         return False
         
